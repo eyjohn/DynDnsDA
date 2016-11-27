@@ -1,17 +1,18 @@
 <?php
-$config = include 'config.inc.php';
-// Example of config.inc.php
+
 /*
+ * Example of config.inc.php
+ *
  * <?php
  *
  * return array(
  * "username" => "username",
  * "password" => "password",
  * "url" => "https://myhostingprovider.com:2222",
- * "domain" => "domain.name.to.use"
+ * "domain" => "domain.name.in.admin.panel.to.use"
  * );
- *
  */
+$config = include 'config.inc.php';
 function DARequest($request) {
 	global $config;
 	$headers = array (
@@ -33,24 +34,40 @@ function DARequest($request) {
 	
 	$res = curl_exec ( $ch );
 	
-	$output = null;
 	if (! $res) {
 		error_log ( "CONNECTION ERROR " . curl_errno ( $ch ) . ": " . curl_error ( $ch ) );
-	} else {
-		parse_str ( $res, $output );
 	}
 	
 	curl_close ( $ch );
 	
-	return $output;
+	return $res;
 }
 
-$name = $_GET ['name'];
-$ip = $_SERVER ['REMOTE_ADDR'];
+$ddns_name = strtolower ( $_GET ['name'] ? $_GET ['name'] : $argv [1] );
+$ddns_ip = $_SERVER ['REMOTE_ADDR'] ? $_SERVER ['REMOTE_ADDR'] : $argv [2];
 
-DARequest ( 'CMD_API_DNS_CONTROL?domain=' . $config ['domain'] . '&action=select&arecs0=' . urlencode ( "name=$name&value=$ip" ) );
-DARequest ( 'CMD_API_DNS_CONTROL?domain=' . $config ['domain'] . "&action=add&type=A&name=$name&value=$ip" );
+$exists = false;
+$dnsconf = DARequest ( 'CMD_API_DNS_CONTROL?domain=' . $config ['domain'] );
 
-echo $name . '.' . $config ['domain'] . ' ' . $ip;
+foreach ( explode ( "\n", $dnsconf ) as $row ) {
+	list ( $name, $ttl, $in, $type, $value ) = explode ( "\t", $row );
+	$name = strtolower ( $name );
+	
+	if ($type == "A") {
+		if ($name == $ddns_name) {
+			if ($value == $ddns_ip) {
+				$exists = true;
+			} else {
+				DARequest ( 'CMD_API_DNS_CONTROL?domain=' . $config ['domain'] . '&action=select&arecs0=' . urlencode ( "name=$name&value=$value" ) );
+			}
+		}
+	}
+}
+
+if (! $exists) {
+	DARequest ( 'CMD_API_DNS_CONTROL?domain=' . $config ['domain'] . "&action=add&type=A&name=$ddns_name&value=$ddns_ip" );
+}
+
+echo $ddns_name . '.' . $config ['domain'] . ' ' . $ddns_ip;
 
 ?>
