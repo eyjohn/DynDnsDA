@@ -1,31 +1,34 @@
 <?php
-include 'config.inc.php';
+$config = include 'config.inc.php';
 // Example of config.inc.php
 /*
-<?php
-define ( "DIRECT_ADMIN_USER", "username" );
-define ( "DIRECT_ADMIN_PASS", "password" );
-define ( "DIRECT_ADMIN_URL", "https://myhostingprovider.com:2222" );
-define ( "DNS_DOMAIN", "domain.name.to.use" );
+ * <?php
+ *
+ * return array(
+ * "username" => "username",
+ * "password" => "password",
+ * "url" => "https://myhostingprovider.com:2222",
+ * "domain" => "domain.name.to.use"
+ * );
+ *
  */
-
-
 function DARequest($request) {
+	global $config;
 	$headers = array (
-			'Authorization: Basic ' . base64_encode ( DIRECT_ADMIN_USER . ':' . DIRECT_ADMIN_PASS ) 
+			'Authorization: Basic ' . base64_encode ( $config ['username'] . ':' . $config ['password'] ) 
 	);
 	
 	$ch = curl_init ();
 	curl_setopt_array ( $ch, array (
 			CURLOPT_HTTPHEADER => $headers,
-			CURLOPT_URL => DIRECT_ADMIN_URL . "/$request",
+			CURLOPT_URL => $config ['url'] . "/$request",
 			CURLOPT_FAILONERROR => 1,
 			CURLOPT_TIMEOUT => 15,
 			CURLOPT_RETURNTRANSFER => 1 
 	) );
 	
-	if (defined ( 'DIRECT_ADMIN_CURL_OPTS' )) {
-		curl_setopt_array ( $ch, DIRECT_ADMIN_CURL_OPTS );
+	if (isset ( $config ['curlopts'] )) {
+		curl_setopt_array ( $ch, $config ['curlopts'] );
 	}
 	
 	$res = curl_exec ( $ch );
@@ -45,7 +48,9 @@ function DARequest($request) {
 $name = $_GET ['name'];
 $ip = $_SERVER ['REMOTE_ADDR'];
 
-DARequest ( 'CMD_API_DNS_CONTROL?domain=' . DNS_DOMAIN . '&action=select&arecs0=' . urlencode ( "name=$name&value=$ip" ) );
-DARequest ( 'CMD_API_DNS_CONTROL?domain=' . DNS_DOMAIN . "&action=add&type=A&name=$name&value=$ip" );
+DARequest ( 'CMD_API_DNS_CONTROL?domain=' . $config ['domain'] . '&action=select&arecs0=' . urlencode ( "name=$name&value=$ip" ) );
+DARequest ( 'CMD_API_DNS_CONTROL?domain=' . $config ['domain'] . "&action=add&type=A&name=$name&value=$ip" );
+
+echo $name . '.' . $config ['domain'] . ' ' . $ip;
 
 ?>
